@@ -70,7 +70,7 @@ export async function getRestaurants(db = db, filters = {}) {
 
   let q = query(collection(db, "restaurants"));
   q = applyQueryFilters(q, filters);
-  const results = await getDoc(q);
+  const results = await getDocs(q);
 
   return results.docs.map((doc) => {
     return {
