@@ -1,19 +1,18 @@
 import { generateFakeRestaurantsAndReviews } from "@/src/lib/fakeRestaurants.js";
 
 import {
+  addDoc,
   collection,
-  onSnapshot,
-  query,
-  getDocs,
   doc,
   getDoc,
-  updateDoc,
+  getDocs,
+  onSnapshot,
   orderBy,
-  Timestamp,
+  query,
   runTransaction,
+  Timestamp,
+  updateDoc,
   where,
-  addDoc,
-  getFirestore,
 } from "firebase/firestore";
 
 import { db } from "@/src/lib/firebase/clientApp";
@@ -34,26 +33,60 @@ const updateWithRating = async (
   newRatingDocument,
   review
 ) => {
-  return;
+  const restaurant = await transaction.get(docRef);
+  const data = restaurant.data();
+const newNumRatings = data?.numRatings ? data.numRatings + 1 : 1;
+  const newSumRating = (data?.sumRating || 0) + Number(review.rating);
+  const newAverage = newSumRating / newNumRatings;
+
+  transaction.update(docRef, {
+    numRatings: newNumRatings,
+    sumRating: newSumRating,
+    avgRating: newAverage,
+  });
+
+  transaction.set(newRatingDocument, {
+    ...review,
+    timestamp: Timestamp.fromDate(new Date()),
+  });
 };
 
 export async function addReviewToRestaurant(db, restaurantId, review) {
-  return;
+  if (!restaurantId) {
+    throw new Error("No restaurant ID has been provided.");
+  }
+  if (!review) {
+    throw new Error("A valid Review has not been  provided.");
+  }
+
+  try {
+    const docRef = doc(collection(db, "restaurants"), restaurantId);
+    const newRatingDocument = doc(
+      collection(db, `restaurants/${restaurantId}/ratings`)
+    );
+    // corrected line
+    await runTransaction(db, (transaction) =>
+      updateWithRating(transaction, docRef, newRatingDocument, review)
+    );
+  } catch (error) {
+    console.error(
+      "There was an error adding the rating to tha restaurant",
+      error
+    );
+
+    throw error;
+  }
 }
 
 function applyQueryFilters(q, { category, city, price, sort }) {
   if (category) {
     q = query(q, where("category", "==", category));
-
   }
   if (city) {
     q = query(q, where("city", "==", city));
-
   }
   if (price) {
-    q = query(q, where("price", "==", price.length
-    ));
-
+    q = query(q, where("price", "==", price.length));
   }
 
   if (sort === "Rating" || !sort) {
@@ -64,10 +97,7 @@ function applyQueryFilters(q, { category, city, price, sort }) {
   return q;
 }
 
-
-
 export async function getRestaurants(db = db, filters = {}) {
-
   let q = query(collection(db, "restaurants"));
   q = applyQueryFilters(q, filters);
   const results = await getDocs(q);
@@ -76,9 +106,9 @@ export async function getRestaurants(db = db, filters = {}) {
     return {
       id: doc.id,
       ...doc.data(),
-      timestamp: doc.data().timestamp.toDate() ,
-    }
-  })
+      timestamp: doc.data().timestamp.toDate(),
+    };
+  });
 }
 
 export function getRestaurantsSnapshot(cb, filters = {}) {
@@ -87,10 +117,8 @@ export function getRestaurantsSnapshot(cb, filters = {}) {
     return;
   }
 
-
   let q = query(collection(db, "restaurants"));
   q = applyQueryFilters(q, filters);
-
 
   return onSnapshot(q, (querySnapshot) => {
     const results = querySnapshot.result.map((s) => {
@@ -98,10 +126,10 @@ export function getRestaurantsSnapshot(cb, filters = {}) {
         id: s.id,
         ...s.data(),
         timestamp: s.data().timestamp().toDate(),
-      }
-    })
+      };
+    });
     cb(results);
-  })
+  });
 }
 
 export async function getRestaurantById(db, restaurantId) {
