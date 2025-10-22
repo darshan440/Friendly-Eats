@@ -1,19 +1,26 @@
-"use server";
+"use client";
 
-import { addReviewToRestaurant } from "@/src/lib/firebase/firestore.js";
-import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
-import { getFirestore } from "firebase/firestore";
+import { addReviewToRestaurant } from "@/src/lib/firebase/firestore";
+import { auth, db } from "@/src/lib/firebase/clientApp"; // make sure db is exported
 
-// This is a Server Action
-// https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions
-// Replace the function below
-export async function handleReviewFormSubmission(data) {
-  const { app } = await getAuthenticatedAppForUser();
-  const db = getFirestore(app);
+export async function handleSubmit(e, restaurantId, review, handleClose) {
+  e.preventDefault();
+  const user = auth.currentUser;
 
-  await addReviewToRestaurant(db, data.get("restaurantId"), {
-    text: data.get("text"),
-    rating: data.get("rating"),
-    userId: data.get("userId"),
-  });
+  if (!user) {
+    console.error("❌ User not logged in");
+    return;
+  }
+
+  try {
+    await addReviewToRestaurant(db, restaurantId, {
+      userId: user.uid,
+      text: review.text,
+      rating: review.rating,
+    });
+    console.log("✅ Review added successfully");
+    handleClose();
+  } catch (err) {
+    console.error("🔥 Error adding review:", err);
+  }
 }

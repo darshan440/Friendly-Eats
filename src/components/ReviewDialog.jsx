@@ -4,7 +4,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import RatingPicker from "@/src/components/RatingPicker.jsx";
-import { handleReviewFormSubmission } from "@/src/app/actions.js";
+import { handleReviewFormSubmission, handleSubmit } from "@/src/app/actions.js";
 
 const ReviewDialog = ({
   isOpen,
@@ -35,8 +35,8 @@ const ReviewDialog = ({
   return (
     <dialog ref={dialog} onMouseDown={handleClick}>
       <form
-        action={handleReviewFormSubmission}
-        onSubmit={() => {
+        onSubmit={(e) => {
+          handleSubmit(e, id, review, handleClose);
           handleClose();
         }}
       >
